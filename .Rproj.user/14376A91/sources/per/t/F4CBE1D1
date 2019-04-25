@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1556015089136.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "977244833",
+    "id" : "F4CBE1D1",
+    "lastKnownWriteTime" : 1556118516,
+    "last_content_update" : 1556118516392,
+    "path" : "E:/R-PROJOCT/House Prices-Advanced Regression Techniques/price.R",
+    "project_path" : "price.R",
+    "properties" : {
+        "cursorPosition" : "209,32",
+        "docOutlineVisible" : "0",
+        "scrollLine" : "197"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

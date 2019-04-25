@@ -1,0 +1,190 @@
+# Loading packages----
+library(tidyverse) # data manipulation
+library(caret)  # machine learning
+library(lares)  #model evaluation
+
+
+
+
+####Reading Data----
+train <- read.csv("train.csv",stringsAsFactors = FALSE,na.strings = c("NA",""))
+test <- read.csv("test.csv",stringsAsFactors = FALSE,na.strings = c("NA",""))
+attach(train)
+
+# Data Cleaning----
+# Looking at the structure
+str(train)
+
+y <- train$SalePrice
+train$SalePrice <- NULL 
+Test_Id <- test$Id
+train$Id <- NULL
+test$Id <- NULL
+
+# Looking at missing values per column
+data <- rbind(train,test)
+str(data)
+colSums(is.na(data))
+
+# Removing columns with missing values less than 50----
+data <- data[,colSums(is.na(data)) < 50]
+str(data)
+
+# Removing zero or near zero variance variables----
+nzv <- nearZeroVar(data)
+data <- data[,-nzv]
+str(data)
+
+
+# Replacing remaining  Nas in character variables as Missing values----
+
+for (col in colnames(data)) {
+  if(class(data[,col])=="character"){
+    new_col <- data[,col]
+    new_col[is.na(new_col)] <- "MISSING"
+    data[col]  <- as.factor(new_col)
+  }
+}
+
+str(data)
+
+# Replace NAs in numeric columns with median values ----
+
+for (col in colnames(data)) {
+  if(class(data[,col])=="integer"){
+    new_col <- data[,col]
+    new_col[is.na(new_col)] <- median(new_col,na.rm = T)
+    data[col]  <- as.numeric(new_col)
+  }
+}
+
+str(data)
+summary(data)
+
+
+# Remove highly correlated Variables---- 
+#selecting numeric variables
+numericdata <- data[sapply(data, is.numeric)] 
+correlated <- cor(numericdata)
+highlycorrelated <- findCorrelation(correlated,cutoff = 0.7)
+highcor <- colnames(numericdata)[highlycorrelated]
+data <- data[,-which(colnames(data)%in%highcor)]
+
+
+# Normalizing the numeric variables
+# prep <- preProcess(data, method = c("range"))
+# data <- predict(prep,newdata = data)
+
+# Subsetting data into original train and test data sets
+train <- data[1:1460,]
+test <- data[1461:2919,]
+
+# Exploratory data Analysis----
+train$SalePrice <- y
+
+# Looking at the target variable, SalePrice----
+summary(train$SalePrice)
+
+# Visualizing
+options(scipen = 999)
+ggplot(train,aes(SalePrice)) + 
+  geom_histogram(binwidth = 5000,bins = 600,color="blue")+
+  ggtitle("SalePrice")+
+  theme_bw()
+
+# The saleprice is positively skewed as we expected,
+# a few houses having high prices
+# and majority median price
+
+
+#01- MSSubClass----
+table(train$MSSubClass)
+
+# Most were in subclass 20
+# Visualizing
+ggplot(train,aes(as.factor(MSSubClass),SalePrice,fill=factor(MSSubClass)))+
+  geom_boxplot()+
+  xlab("Building Class")+
+  ylab("Count")+
+  ggtitle("The Building class By SalePrice")+
+  theme_bw()
+# There is clear difference in size and displacement of the boxplots indicating
+# MSSubClass is very predictive
+
+# 02 - MSZoning----
+unique(train$MSZoning)
+table(test$MSZoning)
+table(train$MSZoning)
+train[as.factor(train$MSZoning) %in% C(C),]
+
+
+# 03- LotArea----
+summary(train$LotArea)
+
+# Visualing
+ggplot(train,aes(LotArea,SalePrice))+
+  geom_point(color="blue")+
+  xlab("Lotarea")+
+  ylab("SalePrice")+
+  ggtitle("Lot Area By SalePrice")+
+  theme_bw()
+# There seems to be a weaker correlation
+# Testing for correlation
+cor(train$SalePrice,train$LotArea)
+ # a weak correlation of 0.2638434
+
+# 04 - LotShape----
+table(train$LotShape)
+
+# Most of property were regular in shape
+# Visualizing
+ggplot(train,aes(as.factor(LotShape),SalePrice,fill=factor(LotShape)))+
+  geom_boxplot()+
+  xlab("LotShape")+
+  ylab("SalePrice")+
+  ggtitle("LotShape By SalePrice")+
+  theme_bw()
+
+# Data Splitting----
+set.seed(100)
+index <- createDataPartition(train$SalePrice,times = 1,p=0.7,list = FALSE)
+training <- train[index,]
+validating <- train[-index,]
+
+
+# Modelling----
+#Setting train Control
+set.seed(100)
+control <- trainControl(method = "repeatedcv",repeats=5,number =5 )
+
+#Setting grid
+
+
+
+#Setting train model
+set.seed(100)
+model <- train(SalePrice~.,data=training,method="rf",metric="rmse",
+               trControl=control)
+model   
+
+
+#Making Predictions 
+pred <- predict(model,newdata = validating)
+
+#Assessing model performance,RMSE and Adj R^2
+mplot_full(validating$SalePrice,pred)
+
+# We have RMSE of 28030 and Adj R^2 of 0.8817
+
+# Making predictions on test data for submission to kaggle----
+predicted <- predict(model,newdata = test)
+
+# Preparing a submission file to kaggle
+sub <- read.csv("Sample_Submission.csv",header = T)
+
+# Appending details to sub data frame
+sub$Id <- Test_Id
+sub$SalePrice <- predicted
+
+#Writing a csv file for submission to kaggle.
+write.csv(sub,"RF_18-12-03.csv",row.names = FALSE)

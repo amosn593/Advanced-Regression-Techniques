@@ -1,0 +1,11 @@
+a <- seq(1,250)
+
+s = vector("numeric")
+for (i in a) {
+  if ( i %% 9 == 0){
+    s <- 1
+    return(s)
+  }
+  
+}
+s
